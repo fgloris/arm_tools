@@ -9,9 +9,8 @@
 class TopicAnalyzer : public rclcpp::Node {
 public:
 TopicAnalyzer() : Node("topic_analyzer") {
-    // 1. 声明参数，设置默认值
-  this->declare_parameter<std::string>("topic_name", "/camera/color/image_raw");
-  this->declare_parameter<long>("time_window_size", 2);
+  this->declare_parameter<std::string>("topic_name", "/camera_left/camera/color/image_rect_raw");
+  this->declare_parameter<long>("time_window_size", 10);
   
   this->get_parameter("topic_name", target_topic_);
   this->get_parameter("time_window_size", time_window_size_);
@@ -21,7 +20,6 @@ TopicAnalyzer() : Node("topic_analyzer") {
   // 设置 QoS：对于传感器数据，使用 SensorDataQoS (Best Effort) 避免阻塞
   auto qos = rclcpp::SensorDataQoS();
 
-  // 使用 ConstSharedPtr 可以减少数据拷贝开销
   subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
     target_topic_, qos,
     std::bind(&TopicAnalyzer::topic_callback, this, std::placeholders::_1));
@@ -47,8 +45,8 @@ void log_statistics() {
   std::unique_lock<std::mutex> lock(mutex_);
   auto now = this->now();
   if ((now - start_time_).seconds() < time_window_size_){
-    RCLCPP_WARN(this->get_logger(), "Filling window, please wait...");
     lock.unlock();
+    RCLCPP_WARN(this->get_logger(), "Filling window, please wait...");
     return;
   }
 
