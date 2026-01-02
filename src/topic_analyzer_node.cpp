@@ -17,8 +17,7 @@ TopicAnalyzer() : Node("topic_analyzer") {
 
   RCLCPP_INFO(this->get_logger(), "Analyzing topic: %s", target_topic_.c_str());
 
-  // 设置 QoS：对于传感器数据，使用 SensorDataQoS (Best Effort) 避免阻塞
-  auto qos = rclcpp::SensorDataQoS();
+  auto qos = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile();
 
   subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
     target_topic_, qos,
@@ -45,8 +44,13 @@ void log_statistics() {
   std::unique_lock<std::mutex> lock(mutex_);
   auto now = this->now();
   if ((now - start_time_).seconds() < time_window_size_){
+    if (arrival_times_.size() == 0){
+      RCLCPP_WARN(this->get_logger(), "No messages received on: %s", target_topic_.c_str());
+      start_time_ = now;
+    }else{
+      RCLCPP_WARN(this->get_logger(), "Filling window, please wait...");
+    }
     lock.unlock();
-    RCLCPP_WARN(this->get_logger(), "Filling window, please wait...");
     return;
   }
 
